@@ -19,10 +19,12 @@ interface Moment {
   minute(): number;
   second(): number;
   isValid(): boolean;
+  format(format: string): string;
 }
 interface MomentStatic {
   (): Moment;
   (input: string, format: string, strict: boolean): Moment;
+  (input: number[]): Moment;
   months(): string[];
   monthsShort(): string[];
   weekdays(): string[];
@@ -177,6 +179,22 @@ export default class ReviewLaterPlugin extends Plugin {
     return opts;
   }
 
+  /**
+   * Formats with the app's own moment, as the core Daily notes plugin does, so
+   * every token and locale (including "LL" and friends) gives the same file
+   * name. Null when moment is unavailable; callers then use `formatDate`.
+   */
+  private momentFormat(d: Ymd, format: string, withTime = false): string | null {
+    try {
+      const now = m();
+      const t = withTime ? [now.hour(), now.minute(), now.second()] : [0, 0, 0];
+      const value = m([d.year, d.month - 1, d.day, ...t]);
+      return value.isValid() ? value.format(format) : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** The core Daily notes settings, read defensively: the plugin object is internal. */
   dailyOptions(): DailyOptions {
     try {
@@ -195,7 +213,7 @@ export default class ReviewLaterPlugin extends Plugin {
   async schedule(file: TFile, date: Ymd, extra: Extra): Promise<void> {
     try {
       const options = this.dailyOptions();
-      const path = dailyNotePath(date, options.folder, options.format, this.formatOptions());
+      const path = dailyNotePath(date, options.folder, options.format, this.formatOptions(), (d, f) => this.momentFormat(d, f));
       const link = this.app.fileManager.generateMarkdownLink(file, path);
       const entry = formatEntry({ prefix: this.settings.linePrefix, link, note: extra.note, quote: extra.quote });
 
@@ -251,8 +269,8 @@ export default class ReviewLaterPlugin extends Plugin {
     const template = await this.readTemplate(options.template);
     const content = renderTemplate(template, {
       title: base,
-      date: (f) => formatDate(date, f, this.formatOptions()),
-      time: (f) => formatDate(date, f, this.formatOptions(true)),
+      date: (f) => this.momentFormat(date, f) ?? formatDate(date, f, this.formatOptions()),
+      time: (f) => this.momentFormat(date, f, true) ?? formatDate(date, f, this.formatOptions(true)),
     });
     const change = planAppend(content, spec, entry);
     const text = change ? applyChange(content, change) : content;

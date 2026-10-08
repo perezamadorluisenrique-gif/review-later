@@ -95,3 +95,8 @@ test('template variables', () => {
   assert.equal(renderTemplate('no variables', ctx), 'no variables');
   assert.equal(renderTemplate('{{title}}{{title}}', ctx), '2026-10-082026-10-08');
 });
+
+test('dailyNotePath prefers the given formatter (the app moment) over the built-in one', () => {
+  assert.equal(dailyNotePath(D, 'Daily', 'LL', {}, () => 'October 8, 2026'), 'Daily/October 8, 2026.md');
+  assert.equal(dailyNotePath(D, 'Daily', 'YYYY-MM-DD', {}, () => null), 'Daily/2026-10-08.md');
+});

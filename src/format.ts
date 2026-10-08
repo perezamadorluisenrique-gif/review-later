@@ -129,8 +129,16 @@ export function cleanPath(path: string): string {
 }
 
 /** The vault path of the daily note for `d`: the folder, then the formatted name (which may hold slashes), then ".md". */
-export function dailyNotePath(d: Ymd, folder: string, format: string, opts: FormatOptions = {}): string {
-  const name = formatDate(d, format.trim() || 'YYYY-MM-DD', opts).trim();
+export function dailyNotePath(
+  d: Ymd,
+  folder: string,
+  format: string,
+  opts: FormatOptions = {},
+  /** The app's moment, when available; null falls back to `formatDate`. */
+  formatter?: (d: Ymd, format: string) => string | null,
+): string {
+  const fmt = format.trim() || 'YYYY-MM-DD';
+  const name = (formatter?.(d, fmt) ?? formatDate(d, fmt, opts)).trim();
   const path = cleanPath(`${cleanPath(folder)}/${name}`);
   return path.toLowerCase().endsWith('.md') ? path : `${path}.md`;
 }
